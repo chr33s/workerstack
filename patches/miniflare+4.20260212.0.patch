@@ -1,0 +1,13 @@
+diff --git a/node_modules/miniflare/dist/src/index.js b/node_modules/miniflare/dist/src/index.js
+index 62b9c1d..21afc7a 100644
+--- a/node_modules/miniflare/dist/src/index.js
++++ b/node_modules/miniflare/dist/src/index.js
+@@ -72158,7 +72158,7 @@ var ASSETS_PLUGIN = {
+     if (!options.assets) {
+       return [];
+     }
+-    const storageServiceName = `${ASSETS_PLUGIN_NAME}:storage`;
++    const storageServiceName = `${ASSETS_PLUGIN_NAME}:storage:${options.assets.workerName}`;
+     const storageService = {
+       name: storageServiceName,
+       disk: {

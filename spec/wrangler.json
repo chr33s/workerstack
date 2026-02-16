@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "workerstack",
+  "main": "./index.ts",
+  "compatibility_date": "2025-10-08",
+  "services": [
+    {
+      "binding": "APP_API",
+      "service": "app-api"
+    },
+    {
+      "binding": "ROOT",
+      "service": "root"
+    },
+    {
+      "binding": "APP",
+      "service": "app"
+    }
+  ],
+  "vars": {
+    "ROUTES": {
+      "routes": [
+        {
+          "binding": "APP_API",
+          "path": "/app/api"
+        },
+        {
+          "binding": "ROOT",
+          "path": "/"
+        },
+        {
+          "binding": "APP",
+          "path": "/app"
+        }
+      ]
+    }
+  }
+}

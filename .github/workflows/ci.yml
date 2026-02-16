@@ -1,0 +1,104 @@
+name: CI
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+    tags: [v*]
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: actions/setup-node@v6
+        with:
+          cache: "npm"
+          node-version-file: "package.json"
+      - run: npm install && npm install --prefix=./spec
+      - run: npm run check
+      - run: npm run build --workspaces --if-present --prefix=./spec
+      - run: npm run test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: .
+          include-hidden-files: true
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_type == 'tag' }}
+    needs: [build]
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: build
+      - uses: actions/setup-node@v6
+        with:
+          cache: "npm"
+          node-version-file: "package.json"
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const tag_name = context.ref;
+            const name = tag_name.replace(/^refs\/tags\/v/, '');
+            const version = name.split("/").at(-1);
+            const prerelease = version.startsWith("0.") || version.includes("-");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let body = '';
+            try {
+              const { data: latestRelease } = await github.rest.repos.getLatestRelease({
+                owner,
+                repo,
+              });
+              const latestReleaseVersion = latestRelease.tag_name.split("/").at(-1);
+              body = `changes: [${latestReleaseVersion}...v${version}](https://github.com/${owner}/${repo}/compare/${latestReleaseVersion}...v${version})`;
+            } catch (e) {
+              body = `Initial release v${version}`;
+            }
+
+            await github.rest.repos.createRelease({
+              body,
+              name,
+              owner,
+              prerelease,
+              repo,
+              tag_name,
+            });
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.repository == 'chr33s/workerstack' && (github.ref_type == 'tag' || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: build
+      - uses: actions/setup-node@v5
+        with:
+          cache: "npm"
+          node-version-file: "package.json"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

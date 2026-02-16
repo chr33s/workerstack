@@ -1,0 +1,9 @@
+{
+  "name": "root",
+  "main": "./index.ts",
+  "compatibility_date": "2025-10-08",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+}

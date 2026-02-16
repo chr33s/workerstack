@@ -1,0 +1,5 @@
+{
+  "name": "app-api",
+  "main": "./index.ts",
+  "compatibility_date": "2025-10-08"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "spec",
+  "private": true,
+  "workspaces": [
+    "**/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "postinstall": "patch-package --patch-dir ../patches",
+    "clean": "find . \\( -name dist -or -name .wrangler \\) -not -path '*/node_modules/*' -exec rm -r {} +",
+    "build": "npm run build --if-present --workspaces && workerstack build --config=./wrangler.json",
+    "dev": "workerstack dev --port=8080",
+    "deploy": "workerstack deploy --dry-run"
+  },
+  "devDependencies": {
+    "@chr33s/workerstack": "file:../",
+    "miniflare": "4.20260212.0",
+    "patch-package": "8.0.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.65.0"
+  }
+}

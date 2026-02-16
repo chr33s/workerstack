@@ -1,0 +1,35 @@
+{
+  "name": "@chr33s/workerstack",
+  "version": "0.0.0",
+  "description": "A file-based metaframework that compiles directory-level wrangler.json configs into a unified micro-service router.",
+  "license": "MIT",
+  "bin": "./src/bin.ts",
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/cloudflare-loader.ts"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/workerstack.ts"
+  },
+  "scripts": {
+    "postinstall": "patch-package",
+    "check": "oxfmt --check . && oxlint --type-aware --type-check",
+    "fix": "oxfmt --write . && oxlint --fix --fix-suggestions --type-aware --type-check",
+    "test": "node --disable-warning=ExperimentalWarning --experimental-test-module-mocks --experimental-transform-types --test"
+  },
+  "devDependencies": {
+    "@types/node": "25.2.3",
+    "miniflare": "4.20260212.0",
+    "oxfmt": "^0.32.0",
+    "oxlint": "^1.47.0",
+    "oxlint-tsgolint": "^0.13.0",
+    "patch-package": "8.0.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.65.0"
+  },
+  "engines": {
+    "node": "^24.12.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "files.insertFinalNewline": true,
+  "oxc.enable": true,
+  "oxc.typeAware": true,
+  "search.exclude": {
+    ".wrangler/**": true,
+    "dist/**": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

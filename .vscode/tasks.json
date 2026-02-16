@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "npm run build --prefix=./spec",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "dev",
+      "type": "shell",
+      "command": "npm run dev --prefix=./spec",
+      "group": "none",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "npm run test -- --watch",
+      "group": "none",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
