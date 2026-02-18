@@ -3,11 +3,12 @@
   "version": "0.0.2",
   "description": "A file-based metaframework that compiles directory-level wrangler.json configs into a unified micro-service router.",
   "license": "MIT",
-  "bin": "./src/bin.ts",
+  "bin": "./dist/bin.js",
   "files": [
+    "dist",
     "src",
     "!src/**/*.test.ts",
-    "!src/cloudflare-loader.ts"
+    "tsconfig.json"
   ],
   "type": "module",
   "exports": {
@@ -17,6 +18,7 @@
     "postinstall": "patch-package",
     "check": "oxfmt --check . && oxlint --type-aware --type-check",
     "fix": "oxfmt --write . && oxlint --fix --fix-suggestions --type-aware --type-check",
+    "prepublishOnly": "tsc -p tsconfig.build.json",
     "test": "node --disable-warning=ExperimentalWarning --experimental-test-module-mocks --experimental-transform-types --test"
   },
   "devDependencies": {
