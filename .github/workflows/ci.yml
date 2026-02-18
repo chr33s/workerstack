@@ -66,10 +66,13 @@ jobs:
 
             let body = '';
             try {
-              const { data: latestRelease } = await github.rest.repos.getLatestRelease({
+              const { data: releases } = await github.rest.repos.listReleases({
                 owner,
                 repo,
+                per_page: 1,
               });
+              const latestRelease = releases[0];
+              if (!latestRelease) throw new Error('No previous release');
               const latestReleaseVersion = latestRelease.tag_name.split("/").at(-1);
               body = `changes: [${latestReleaseVersion}...v${version}](https://github.com/${owner}/${repo}/compare/${latestReleaseVersion}...v${version})`;
             } catch (e) {
