@@ -297,6 +297,36 @@ class AllAttributesRewriter {
   }
 }
 
+class MountPathInjector {
+  private injected = false;
+  private mount: string;
+
+  constructor(mount: string) {
+    this.mount = normalizePath(mount);
+  }
+
+  element(el: Element) {
+    if (this.injected) return;
+    this.injected = true;
+
+    const basePath = this.mount === "/" ? "/" : this.mount + "/";
+    const fetchOverride =
+      `(function(){` +
+      `var b=window.__BASE_PATH__,s="workerstack://",f=globalThis.fetch;` +
+      `function r(u){return(b==="/"?"/":b+"/")+u.slice(s.length)}` +
+      `globalThis.fetch=function(i,o){` +
+      `if(typeof i==="string"&&i.startsWith(s)){i=r(i)}` +
+      `else if(i instanceof Request&&i.url.startsWith(s)){i=new Request(r(i.url),i)}` +
+      `return f.call(globalThis,i,o)}` +
+      `})()`;
+    el.prepend(
+      `<script>window.__BASE_PATH__=${JSON.stringify(this.mount)};${fetchOverride}</script>` +
+        `<base href="${basePath}">`,
+      { html: true },
+    );
+  }
+}
+
 class SmoothTransitionsInjector {
   private injected = false;
 
@@ -486,6 +516,7 @@ async function handleMountedApp(
       "*",
       new AllAttributesRewriter(mountActual, assetPrefixes),
     );
+    rewriter.on("head", new MountPathInjector(mountActual));
     if (options?.smoothTransitions) rewriter.on("head", new SmoothTransitionsInjector());
 
     if (options?.preloadStaticMounts?.length) {

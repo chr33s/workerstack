@@ -89,8 +89,30 @@ The router matches requests by path, strips the mount prefix, proxies to the ser
 - **Asset URL rewriting** — HTML and CSS asset references prefixed with mount path
 - **Redirect rewriting** — `Location: /login` → `Location: /app/login`
 - **Cookie path scoping** — `Path=/` → `Path=/app/`
+- **Mount path injection** — `window.__BASE_PATH__`, `<base href>`, and `workerstack://` fetch scheme
 - **View transitions** — optional `smoothTransitions` in ROUTES config
 - **Preloading** — `preload: true` emits speculation rules or fetch-based preload
+
+### Client-Side Mount Awareness
+
+HTML responses get a `<script>` and `<base>` tag injected into `<head>`:
+
+```html
+<script>
+  window.__BASE_PATH__ = "/app"; /* workerstack:// fetch override */
+</script>
+<base href="/app/" />
+```
+
+- **`<base href>`** — browser resolves relative URLs against the mount (`<a href="settings">` → `/app/settings`)
+- **`window.__BASE_PATH__`** — explicit access to the mount path for scripts
+- **`workerstack://` scheme** — mount-relative fetch without risk of double-prefixing:
+
+```js
+fetch("workerstack://api/data"); // → /app/api/data
+fetch("workerstack://settings"); // → /app/settings
+fetch("/other/path"); // untouched
+```
 
 ### Asset Prefixes
 

@@ -98,4 +98,30 @@ void describe("WorkerStack Router", () => {
       assert.ok(html.includes('src="/app/assets/index.js"'));
     });
   });
+
+  void describe("mount path injection", () => {
+    void it("injects __BASE_PATH__ and <base> for mounted app", async () => {
+      const response = await fetchWorker("/app");
+      const html = await response.text();
+
+      assert.ok(html.includes('window.__BASE_PATH__="/app"'));
+      assert.ok(html.includes('<base href="/app/">'));
+    });
+
+    void it("injects __BASE_PATH__ as / for root mount", async () => {
+      const response = await fetchWorker("/");
+      const html = await response.text();
+
+      assert.ok(html.includes('window.__BASE_PATH__="/"'));
+      assert.ok(html.includes('<base href="/">'));
+    });
+
+    void it("injects workerstack:// fetch override", async () => {
+      const response = await fetchWorker("/app");
+      const html = await response.text();
+
+      assert.ok(html.includes("workerstack:/"));
+      assert.ok(html.includes("globalThis.fetch"));
+    });
+  });
 });
