@@ -22,14 +22,14 @@
     "test": "node --disable-warning=ExperimentalWarning --experimental-test-module-mocks --experimental-transform-types --test"
   },
   "devDependencies": {
-    "@types/node": "25.2.3",
-    "miniflare": "4.20260212.0",
-    "oxfmt": "0.33.0",
-    "oxlint": "1.48.0",
-    "oxlint-tsgolint": "0.14.0",
+    "@types/node": "25.3.0",
+    "miniflare": "4.20260302.0",
+    "oxfmt": "0.35.0",
+    "oxlint": "1.50.0",
+    "oxlint-tsgolint": "0.14.2",
     "patch-package": "8.0.1",
     "typescript": "5.9.3",
-    "wrangler": "4.65.0"
+    "wrangler": "4.68.0"
   },
   "engines": {
     "node": "^24.12.0"
