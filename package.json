@@ -1,6 +1,6 @@
 {
   "name": "@chr33s/workerstack",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A file-based metaframework that compiles directory-level wrangler.json configs into a unified micro-service router.",
   "license": "MIT",
   "bin": "./dist/bin.js",
