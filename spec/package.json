@@ -14,9 +14,9 @@
   },
   "devDependencies": {
     "@chr33s/workerstack": "file:../",
-    "miniflare": "4.20260212.0",
+    "miniflare": "4.20260302.0",
     "patch-package": "8.0.1",
     "typescript": "5.9.3",
-    "wrangler": "4.65.0"
+    "wrangler": "4.68.1"
   }
 }

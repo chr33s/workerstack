@@ -15,6 +15,17 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run"
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - build
+          - release
+          - publish
 
 jobs:
   build:
@@ -41,7 +52,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: ${{ github.ref_type == 'tag' }}
+    if: ${{ (github.ref_type == 'tag' && !inputs.job) || inputs.job == 'all' || inputs.job == 'release' }}
     needs: [build]
     permissions:
       contents: write
@@ -57,12 +68,21 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const tag_name = context.ref;
-            const name = tag_name.replace(/^refs\/tags\/v/, '');
-            const version = name.split("/").at(-1);
-            const prerelease = version.startsWith("0.") || version.includes("-");
+            const fs = require('fs');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+
+            let tag_name;
+            if (context.ref.startsWith('refs/tags/')) {
+              tag_name = context.ref.replace(/^refs\/tags\//, '');
+            } else {
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              tag_name = `v${pkg.version}`;
+            }
+
+            const name = tag_name.replace(/^v/, '');
+            const version = name;
+            const prerelease = version.startsWith("0.") || version.includes("-");
 
             let body = '';
             try {
@@ -73,10 +93,10 @@ jobs:
               });
               const latestRelease = releases[0];
               if (!latestRelease) throw new Error('No previous release');
-              const latestReleaseVersion = latestRelease.tag_name.split("/").at(-1);
-              body = `changes: [${latestReleaseVersion}...v${version}](https://github.com/${owner}/${repo}/compare/${latestReleaseVersion}...v${version})`;
+              const latestReleaseVersion = latestRelease.tag_name;
+              body = `changes: [${latestReleaseVersion}...${tag_name}](https://github.com/${owner}/${repo}/compare/${latestReleaseVersion}...${tag_name})`;
             } catch (e) {
-              body = `Initial release v${version}`;
+              body = `Initial release ${tag_name}`;
             }
 
             await github.rest.repos.createRelease({
@@ -91,8 +111,8 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
-    needs: [release]
-    if: ${{ github.repository == 'chr33s/workerstack' }}
+    needs: [build]
+    if: ${{ github.repository == 'chr33s/workerstack' && (!inputs.job || inputs.job == 'all' || inputs.job == 'publish') }}
     steps:
       - uses: actions/download-artifact@v7
         with:
@@ -102,6 +122,6 @@ jobs:
           cache: "npm"
           node-version-file: "package.json"
           registry-url: "https://registry.npmjs.org"
-      - run: npm publish --access public
+      - run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
