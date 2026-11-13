@@ -75,6 +75,19 @@ void describe("WorkerStack", () => {
       assert.deepStrictEqual(await resp.json(), { path: "/page" });
     });
 
+    void it("forwards the public path when the route has basePath", async () => {
+      const env = {
+        ROUTES: { routes: [{ binding: "APP", path: "/app", basePath: "/app" }] },
+        APP: echoPathFetcher(),
+      };
+
+      const resp = await workerstack(
+        new Request("https://example.com/app/assets/index.js"),
+        env as any,
+      );
+      assert.deepStrictEqual(await resp.json(), { path: "/app/assets/index.js" });
+    });
+
     void it("forwards mount root as /", async () => {
       const env = {
         ROUTES: { routes: [{ binding: "APP", path: "/app" }] },
@@ -150,6 +163,16 @@ void describe("WorkerStack", () => {
 
       const resp = await workerstack(new Request("https://example.com/app/page"), env as any);
       assert.strictEqual(resp.status, 302);
+      assert.strictEqual(resp.headers.get("location"), "https://example.com/app/login");
+    });
+
+    void it("does not double-prefix a Location that already includes the mount", async () => {
+      const env = {
+        ROUTES: { routes: [{ binding: "APP", path: "/app", basePath: "/app" }] },
+        APP: redirectFetcher("/app/login"),
+      };
+
+      const resp = await workerstack(new Request("https://example.com/app/page"), env as any);
       assert.strictEqual(resp.headers.get("location"), "https://example.com/app/login");
     });
 
@@ -235,6 +258,22 @@ void describe("WorkerStack", () => {
       const resp = await workerstack(new Request("https://example.com/app"), env as any);
       const cookies = resp.headers.getSetCookie();
       assert.ok(cookies.some((c) => c.includes("Path=/app/")));
+    });
+
+    void it("does not double-prefix Set-Cookie Path that already includes the mount", async () => {
+      const env = {
+        ROUTES: { routes: [{ binding: "APP", path: "/app", basePath: "/app" }] },
+        APP: mockFetcher(() => {
+          const headers = new Headers({ "content-type": "application/json" });
+          headers.append("Set-Cookie", "session=abc123; Path=/app/; HttpOnly");
+          return new Response("{}", { headers });
+        }),
+      };
+
+      const resp = await workerstack(new Request("https://example.com/app"), env as any);
+      const cookies = resp.headers.getSetCookie();
+      assert.ok(cookies.some((c) => c.includes("Path=/app/;")));
+      assert.ok(!cookies.some((c) => c.includes("Path=/app/app")));
     });
 
     void it("preserves Set-Cookie paths for root mount", async () => {

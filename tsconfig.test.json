@@ -7,5 +7,5 @@
     "target": "es2022",
     "types": ["@types/node"]
   },
-  "include": ["**/*"]
+  "include": ["src"]
 }

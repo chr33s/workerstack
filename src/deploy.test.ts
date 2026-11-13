@@ -6,11 +6,11 @@ const mockCompile = mock.fn();
 const mockFindSubAppConfigs = mock.fn(() => [] as { dir: string; path: string }[]);
 
 mock.module("node:child_process", {
-  namedExports: { execSync: mockExecSync },
+  exports: { execSync: mockExecSync },
 });
 
 mock.module("./compile.ts", {
-  namedExports: {
+  exports: {
     compile: mockCompile,
     findSubAppConfigs: mockFindSubAppConfigs,
   },

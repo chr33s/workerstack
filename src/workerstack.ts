@@ -9,8 +9,9 @@ import { env } from "cloudflare:workers";
  *
  * Based on the Cloudflare microfrontend-template pattern:
  * - Routes requests to service bindings based on mount expressions
- * - Strips matched mount prefix before proxying upstream
- * - Rewrites HTML/CSS asset URLs for correct resolution
+ * - Strips the mount prefix before proxying workers that are not asset mounts
+ * - Forwards the public URL for routes with basePath so assets.base_path matches
+ * - Rewrites HTML/CSS asset URLs that are still root-absolute
  * - Rewrites redirects and cookie paths
  */
 
@@ -52,6 +53,8 @@ type RouteConfig = {
   binding: string;
   path: string;
   preload?: boolean;
+  /** Public asset prefix. When set, the router does not strip the mount. */
+  basePath?: string;
 };
 
 type CompiledRoute = {
@@ -62,6 +65,7 @@ type CompiledRoute = {
   isStaticMount: boolean;
   staticMount?: string;
   baseSpecificity: number;
+  basePath?: string;
 };
 
 /* ----------------------------- utilities ----------------------------- */
@@ -395,10 +399,11 @@ function rewriteLocation(location: string, mount: string, requestUrl: URL): stri
   mount = normalizePath(mount);
   try {
     const url = new URL(location, requestUrl.origin);
-    if (url.origin === requestUrl.origin && url.pathname.startsWith("/")) {
-      url.pathname = mount === "/" ? url.pathname : mount + url.pathname;
-      return url.toString();
+    if (url.origin !== requestUrl.origin || !url.pathname.startsWith("/")) return location;
+    if (mount !== "/" && url.pathname !== mount && !url.pathname.startsWith(mount + "/")) {
+      url.pathname = mount + url.pathname;
     }
+    return url.toString();
   } catch {
     // ignore invalid URLs
   }
@@ -407,6 +412,7 @@ function rewriteLocation(location: string, mount: string, requestUrl: URL): stri
 
 function rewriteSetCookie(headers: Headers, mount: string) {
   mount = normalizePath(mount);
+  if (mount === "/") return;
 
   const getSetCookie = (headers as any).getSetCookie as undefined | (() => string[]);
   if (!getSetCookie) return;
@@ -416,9 +422,8 @@ function rewriteSetCookie(headers: Headers, mount: string) {
 
   headers.delete("Set-Cookie");
   for (const cookie of cookies) {
-    if (/;\s*Path=\//i.test(cookie)) {
-      const newPath = mount === "/" ? "/" : `${mount}/`;
-      headers.append("Set-Cookie", cookie.replace(/;\s*Path=\//i, `; Path=${newPath}`));
+    if (/;\s*Path=\/(?=[;\s]|$)/i.test(cookie)) {
+      headers.append("Set-Cookie", cookie.replace(/;\s*Path=\/(?=[;\s]|$)/i, `; Path=${mount}/`));
     } else {
       headers.append("Set-Cookie", cookie);
     }
@@ -475,13 +480,15 @@ async function handleMountedApp(
   options?: {
     smoothTransitions?: boolean;
     preloadStaticMounts?: string[];
+    basePath?: string;
   },
 ): Promise<Response> {
   mountActual = normalizePath(mountActual);
 
   const forwardUrl = new URL(request.url);
+  const preservePath = options?.basePath != null && options.basePath !== "";
 
-  if (mountActual !== "/") {
+  if (!preservePath && mountActual !== "/") {
     if (forwardUrl.pathname === mountActual) {
       forwardUrl.pathname = "/";
     } else if (forwardUrl.pathname.startsWith(mountActual + "/")) {
@@ -634,6 +641,7 @@ function buildRoutes(envObj: typeof env = env): {
       isStaticMount,
       staticMount,
       baseSpecificity: computeBaseSpecificity(expr),
+      basePath: r.basePath ? normalizePath(r.basePath) : undefined,
     });
   }
 
@@ -700,6 +708,7 @@ export async function workerstack(request: Request, envParam?: typeof env): Prom
   return handleMountedApp(request, best.route.binding, best.mountActual, assetPrefixes, {
     smoothTransitions,
     preloadStaticMounts: preloadStaticMounts.length ? preloadStaticMounts : undefined,
+    basePath: best.route.basePath,
   });
 }
 

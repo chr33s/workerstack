@@ -30,7 +30,8 @@
         },
         {
           "binding": "APP",
-          "path": "/app"
+          "path": "/app",
+          "basePath": "/app"
         }
       ]
     }

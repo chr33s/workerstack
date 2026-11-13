@@ -57,7 +57,8 @@ Extra arguments are forwarded to wrangler.
 - Unmatched paths fall through to the root worker
 - Binding names derived from `name` field (`app-api` → `APP_API`)
 - Existing root `wrangler.json` settings are preserved during compile
-- Sub-apps with `assets` and nested children get `run_worker_first` rules automatically
+- Sub-apps with `assets` mounted below `/` get `assets.base_path` set to that route
+- Sub-apps with `assets` and nested children get `run_worker_first` rules automatically (`/app/api/*` when `base_path` is set)
 
 ## `_root` Directory
 
@@ -72,6 +73,19 @@ The `_root/` directory is a special sub-app that maps to `/` instead of `/_root`
 }
 ```
 
+```json
+// app/wrangler.json — compile sets base_path from the directory
+{
+  "name": "app",
+  "main": "./index.ts",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "base_path": "/app"
+  }
+}
+```
+
 ```ts
 // _root/index.ts
 export default {
@@ -83,10 +97,10 @@ export default {
 
 ## Router
 
-The router matches requests by path, strips the mount prefix, proxies to the service binding, and rewrites the response:
+The router matches requests by path, proxies to the service binding, and rewrites the response:
 
-- **Path stripping** — `/app/api/users` → upstream sees `/users`
-- **Asset URL rewriting** — HTML and CSS asset references prefixed with mount path
+- **Static assets** — a mounted asset worker gets `assets.base_path` (for example `/app`). The router forwards the public URL, so `/app/` serves `dist/index.html` and `/app/assets/app.js` serves `dist/assets/app.js` without nesting a copy of the files. Point the bundler at the same prefix (`base: "/app/"` in Vite). HTML and CSS that still reference `/assets/...` are rewritten onto the mount.
+- **Path stripping** — workers without static assets: `/app/api/users` → upstream sees `/users`
 - **Redirect rewriting** — `Location: /login` → `Location: /app/login`
 - **Cookie path scoping** — `Path=/` → `Path=/app/`
 - **Mount path injection** — `window.__BASE_PATH__`, `<base href>`, and `workerstack://` fetch scheme

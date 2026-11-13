@@ -21,23 +21,25 @@
     ".": "./src/workerstack.ts"
   },
   "scripts": {
-    "postinstall": "patch-package",
     "check": "oxfmt --check . && oxlint --type-aware --type-check",
     "fix": "oxfmt --write . && oxlint --fix --fix-suggestions --type-aware --type-check",
     "prepublishOnly": "tsc -p tsconfig.build.json",
     "test": "node --disable-warning=ExperimentalWarning --experimental-test-module-mocks --experimental-transform-types --test"
   },
   "devDependencies": {
-    "@types/node": "25.3.0",
-    "miniflare": "4.20260302.0",
-    "oxfmt": "0.35.0",
-    "oxlint": "1.50.0",
-    "oxlint-tsgolint": "0.15.0",
-    "patch-package": "8.0.1",
-    "typescript": "5.9.3",
-    "wrangler": "4.68.1"
+    "@types/node": "26.6.6",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "wrangler": "4.161.0"
   },
   "engines": {
     "node": "^24.12.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261110.1": true
   }
 }

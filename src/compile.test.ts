@@ -148,6 +148,49 @@ void describe("Compile Script", () => {
     assert.throws(() => runCompile(), { message: /Missing/ });
   });
 
+  void it("sets assets.base_path for mounted asset workers", () => {
+    mkdirSync(join(tmpDir, "spec", "app", "api"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "spec", "app", "wrangler.json"),
+      JSON.stringify({
+        name: "my-app",
+        assets: { directory: "./dist", binding: "ASSETS" },
+      }),
+    );
+    writeFileSync(
+      join(tmpDir, "spec", "app", "api", "wrangler.json"),
+      JSON.stringify({ name: "my-app-api" }),
+    );
+    mkdirSync(join(tmpDir, "spec", "_root"), { recursive: true });
+    writeFileSync(
+      join(tmpDir, "spec", "_root", "wrangler.json"),
+      JSON.stringify({
+        name: "root",
+        assets: { directory: "./public", binding: "ASSETS" },
+      }),
+    );
+
+    runCompile();
+
+    const app = JSON.parse(readFileSync(join(tmpDir, "spec", "app", "wrangler.json"), "utf-8"));
+    assert.strictEqual(app.assets.base_path, "/app");
+    assert.strictEqual(app.assets.not_found_handling, "none");
+    assert.deepStrictEqual(app.assets.run_worker_first, ["/app/api/*"]);
+
+    const rootAssets = JSON.parse(
+      readFileSync(join(tmpDir, "spec", "_root", "wrangler.json"), "utf-8"),
+    );
+    assert.strictEqual(rootAssets.assets.base_path, undefined);
+
+    const rootConfig = JSON.parse(readFileSync(join(tmpDir, "spec", "wrangler.json"), "utf-8"));
+    const appRoute = rootConfig.vars.ROUTES.routes.find((r: any) => r.path === "/app");
+    assert.strictEqual(appRoute.basePath, "/app");
+    const apiRoute = rootConfig.vars.ROUTES.routes.find((r: any) => r.path === "/app/api");
+    assert.strictEqual(apiRoute.basePath, undefined);
+    const rootRoute = rootConfig.vars.ROUTES.routes.find((r: any) => r.path === "/");
+    assert.strictEqual(rootRoute.basePath, undefined);
+  });
+
   void it("maps _root directory to '/' path", () => {
     mkdirSync(join(tmpDir, "spec", "_root"), { recursive: true });
     writeFileSync(join(tmpDir, "spec", "_root", "wrangler.json"), JSON.stringify({ name: "root" }));

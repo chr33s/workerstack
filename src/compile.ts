@@ -53,6 +53,7 @@ interface ServiceBinding {
 interface RouteEntry {
   binding: string;
   path: string;
+  basePath?: string;
 }
 
 interface RootConfig {
@@ -133,6 +134,14 @@ function dirToRoute(dir: string): string {
  */
 function toBindingName(serviceName: string): string {
   return serviceName.toUpperCase().replace(/-/g, "_");
+}
+
+/**
+ * Mount path used as assets.base_path. Non-root only; "/" is not a prefix.
+ */
+function assetBasePath(assets: unknown, routePath: string): string | undefined {
+  if (routePath === "/" || !assets || typeof assets !== "object") return undefined;
+  return routePath;
 }
 
 /**
@@ -246,6 +255,7 @@ export function compile(rootDir: string): void {
 
     // _root is the root-content worker → route to "/"
     const routePath = subApp.dir === ROOT_CONTENT_DIR ? "/" : dirToRoute(subApp.dir);
+    const basePath = assetBasePath(config.assets, routePath);
 
     services.push({
       binding,
@@ -255,6 +265,7 @@ export function compile(rootDir: string): void {
     routes.push({
       binding,
       path: routePath,
+      ...(basePath ? { basePath } : {}),
     });
 
     console.log(`  ${subApp.dir}/ -> ${routePath} (${serviceName} as ${binding})`);
@@ -269,9 +280,10 @@ export function compile(rootDir: string): void {
     process.exit(1);
   }
 
-  // Patch sub-app wrangler.json files that have assets and nested children
-  // e.g. app/wrangler.json with assets needs run_worker_first: ["/api/*"]
-  // so its assets binding doesn't intercept nested sub-app requests.
+  // Asset workers mounted below "/" get assets.base_path so the platform
+  // serves ./dist at the public prefix without nesting files.
+  // Nested children still need run_worker_first. With base_path the worker
+  // sees the public URL, so the pattern includes the mount ("/app/api/*").
   const allRoutePaths = routes.map((r) => r.path);
   for (const subApp of subApps) {
     let config: WranglerConfig;
@@ -283,30 +295,48 @@ export function compile(rootDir: string): void {
 
     if (!config.assets || typeof config.assets !== "object") continue;
 
+    const routePath = subApp.dir === ROOT_CONTENT_DIR ? "/" : dirToRoute(subApp.dir);
+    const assets = config.assets as Record<string, unknown>;
+    let changed = false;
+
+    if (routePath !== "/" && assets.base_path !== routePath) {
+      assets.base_path = routePath;
+      changed = true;
+    }
+
     const myRoute = dirToRoute(subApp.dir);
-    // Find nested children: routes that start with this sub-app's path
+    // Find nested children: routes that start with this sub-app's path.
+    // _root's directory route is "/_root", so it does not adopt other mounts.
     const childPaths = allRoutePaths
       .filter((r) => r !== myRoute && r.startsWith(myRoute === "/" ? "/" : myRoute + "/"))
       .map((r) => (myRoute === "/" ? r : r.slice(myRoute.length)))
       .sort((a, b) => a.length - b.length);
 
-    if (childPaths.length === 0) continue;
+    if (childPaths.length > 0) {
+      const topLevel: string[] = [];
+      for (const p of childPaths) {
+        if (!topLevel.some((t) => p.startsWith(t + "/"))) {
+          topLevel.push(p);
+        }
+      }
 
-    // Deduplicate: only keep top-level patterns
-    const topLevel: string[] = [];
-    for (const p of childPaths) {
-      if (!topLevel.some((t) => p.startsWith(t + "/"))) {
-        topLevel.push(p);
+      const prefix = routePath !== "/" ? routePath : "";
+      const runWorkerFirst = topLevel.map((p) => `${prefix}${p}/*`);
+      if (assets.not_found_handling !== "none") {
+        assets.not_found_handling = "none";
+        changed = true;
+      }
+      if (JSON.stringify(assets.run_worker_first) !== JSON.stringify(runWorkerFirst)) {
+        assets.run_worker_first = runWorkerFirst;
+        changed = true;
       }
     }
 
-    const assets = config.assets as Record<string, unknown>;
-    assets.not_found_handling = "none";
-    assets.run_worker_first = topLevel.map((p) => `${p}/*`);
+    if (!changed) continue;
 
     writeFileSync(subApp.path, JSON.stringify(config, null, 2) + "\n");
     console.log(
-      `  Updated ${subApp.dir}/wrangler.json assets: run_worker_first: ${JSON.stringify(assets.run_worker_first)}`,
+      `  Updated ${subApp.dir}/wrangler.json assets: base_path: ${JSON.stringify(assets.base_path ?? null)}, run_worker_first: ${JSON.stringify(assets.run_worker_first ?? null)}`,
     );
   }
 
